@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mirosul de Acasa - Conacul Culinar</title>
+    <link rel="manifest" href="./manifest.json">
+    <style>
+        body {
+            font-family: 'Georgia', serif;
+            background-color: #fbf7f0;
+            color: #2b2118;
+            max-width: 650px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        header {
+            text-align: center;
+            padding: 30px 20px;
+            border-bottom: 2px solid #e3d5bc;
+            margin-bottom: 25px;
+            background-color: #fffaf2;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+        }
+        h1 {
+            color: #6e2c22;
+            margin: 0;
+            font-size: 2.2rem;
+            letter-spacing: 0.5px;
+        }
+        .subtitle {
+            font-style: italic;
+            color: #826a53;
+            margin-top: 8px;
+            font-size: 1rem;
+        }
+        .top-actions {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 15px;
+        }
+        .btn-secondary {
+            background-color: #826a53;
+            color: #fff;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            font-family: inherit;
+            transition: background 0.2s;
+        }
+        .btn-secondary:hover {
+            background-color: #6a5341;
+        }
+        .pantry-box {
+            background: #ffffff;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.04);
+            border: 1px solid #e3d5bc;
+            margin-bottom: 20px;
+        }
+        .pantry-box h3 {
+            margin-top: 0;
+            color: #6e2c22;
+            font-size: 1.25rem;
+        }
+        textarea {
+            width: 100%;
+            height: 90px;
+            padding: 12px;
+            margin-top: 8px;
+            margin-bottom: 15px;
+            border: 1px solid #d0c2aa;
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-family: inherit;
+            font-size: 1rem;
+            background-color: #fffefb;
+        }
+        button.main-btn {
+            background-color: #6e2c22;
+            color: #fff;
+            border: none;
+            padding: 14px 20px;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            font-size: 1.05rem;
+            font-family: inherit;
+            transition: background 0.2s;
+            box-shadow: 0 2px 6px rgba(110,44,34,0.2);
+        }
+        button.main-btn:hover {
+            background-color: #532018;
+        }
+        button:disabled {
+            background-color: #a89f91 !important;
+            cursor: not-allowed !important;
+        }
+        .recipe-result {
+            margin-top: 20px;
+            background: #ffffff;
+            padding: 25px;
+            border-left: 5px solid #b87d39;
+            border-radius: 8px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.04);
+            border: 1px solid #f0e6d6;
+            line-height: 1.6;
+        }
+        .recipe-result h3 {
+            color: #6e2c22;
+            margin-top: 0;
+        }
+        .saved-drawer {
+            display: none;
+            margin-top: 20px;
+            background: #f2ebd9;
+            padding: 25px;
+            border-radius: 12px;
+            border: 1px solid #dcd1bd;
+            box-shadow: inset 0 2px 6px rgba(0,0,0,0.03);
+        }
+        .saved-drawer h3 {
+            color: #6e2c22;
+            margin-top: 0;
+            border-bottom: 1px solid #dcd1bd;
+            padding-bottom: 8px;
+        }
+        .saved-recipe-item {
+            background: #ffffff;
+            padding: 18px;
+            margin-top: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #6e2c22;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+            line-height: 1.5;
+        }
+    </style>
+    <script src="./config.js"></script>
+</head>
+<body>
+
+    <header>
+        <h1>Mirosul de Acasa</h1>
+        <div class="subtitle">Magia din vatră, prelucrată cu inteligență.</div>
+    </header>
+
+    <main>
+        <div class="top-actions">
+            <button class="btn-secondary" onclick="toggleSavedDrawer()">📖 Caietul cu rețete salvate</button>
+        </div>
+
+        <div id="savedDrawer" class="saved-drawer">
+            <h3>Caietul tău de rețete</h3>
+            <div id="savedList"><p style="font-style: italic; color: #777;">Nu ai nicio rețetă salvată momentan în tainniță.</p></div>
+        </div>
+
+        <div class="pantry-box">
+            <h3>Ce ai prin cămară, maistre?</h3>
+            <p style="font-size: 0.95rem; color: #555;">Scrie ingredientele (cu rânduială sau în haos, le deslușim noi):</p>
+            <textarea id="ingredients" placeholder="Ex: cartofi, o bucată de brânză veche, ceapă..."></textarea>
+            <button id="generateBtn" class="main-btn" onclick="generateWithGemini()">Poftește o rețetă meșteșugită de maestru</button>
+        </div>
+
+        <div id="resultContainer"></div>
+    </main>
+
+    <script type="module">
+        import { GoogleGenAI } from "https://esm.run/@google/genai";
+
+        window.onload = function() {
+            loadSavedRecipes();
+        };
+
+        window.toggleSavedDrawer = function() {
+            const drawer = document.getElementById('savedDrawer');
+            if (drawer.style.display === 'none' || drawer.style.display === '') {
+                drawer.style.display = 'block';
+                drawer.scrollIntoView({ behavior: 'smooth' });
+            } else {
+                drawer.style.display = 'none';
+            }
+        };
+
+        window.generateWithGemini = async function() {
+            const apiKey = typeof CONFIG !== 'undefined' ? CONFIG.GEMINI_API_KEY : '';
+            const rawVal = document.getElementById('ingredients').value.trim();
+            const container = document.getElementById('resultContainer');
+            const btn = document.getElementById('generateBtn');
+
+            if(!apiKey || apiKey.includes("AICI_PUNE")) {
+                alert('Eroare: Cheia API nu este configurată corect în fișierul config.js!');
+                return;
+            }
+
+            if(!rawVal) {
+                alert('Păi și ce vrei să gătim, aer și poezie? Pune ceva în cămară!');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerText = 'Maestrul răscolește prin cămară și potrivește mirodeniile...';
+            container.innerHTML = `<div class="recipe-result"><p><em>Se aprinde focul în vatră. Un moment de tăcere creativă...</em></p></div>`;
+
+            try {
+                const ai = new GoogleGenAI({ apiKey: apiKey });
+
+                const promptText = `Ești un maestru bucătar boem, fin cunoscător al rețetelor tradiționale din bătrâni (stil Sanda Marin combinat cu poezie). 
+                Utilizatorul are următoarele ingrediente în cămară: "${rawVal}".
+                Te rog să interpretezi inteligent ingredientele și să propuni o rețetă culinară completă, gustoasă și realistă, păstrând rânduiala clasică.
+                Include:
+                1. Un titlu frumos și boem al rețetei.
+                2. O scurtă introducere plină de duh.
+                3. Lista de ingrediente cu gramaje clare.
+                4. Modul de preparare pas cu pas.
+                Scrie totul curat, în limba română, fără formatare Markdown greoaie, ci text simplu structurat frumos.`;
+
+                const response = await ai.models.generateContent({
+                    model: 'gemini-2.5-flash',
+                    contents: promptText,
+                });
+
+                const recipeText = response.text();
+
+                container.innerHTML = `
+                    <div class="recipe-result" id="currentRecipeCard">
+                        <h3>Rețetă din conac pentru: "${escapeHtml(rawVal)}"</h3>
+                        <div style="white-space: pre-line;">${escapeHtml(recipeText)}</div>
+                        <button class="btn-secondary" onclick="saveGeminiRecipe('currentRecipeCard')" style="margin-top: 15px; width: 100%;">Păstrează rețeta în caiet</button>
+                    </div>
+                `;
+
+            } catch (error) {
+                console.error(error);
+                container.innerHTML = `<div class="recipe-result" style="border-left-color: #6e2c22;"><p><strong>Eroare:</strong> Conexiunea cu conacul a eșuat. Verifică cheia API din fundal.</p></div>`;
+            } finally {
+                btn.disabled = false;
+                btn.innerText = 'Poftește o rețetă de la maestrul Gemini';
+            }
+        };
+
+        window.escapeHtml = function(text) {
+            return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        };
+
+        window.saveGeminiRecipe = function(cardId) {
+            const card = document.getElementById(cardId);
+            const clone = card.cloneNode(true);
+            const btnInClone = clone.querySelector('button');
+            if(btnInClone) btnInClone.remove();
+
+            const htmlContent = clone.innerHTML;
+
+            let saved = JSON.parse(localStorage.getItem('miros_retele_salvate') || '[]');
+            saved.push(htmlContent);
+            localStorage.setItem('miros_retele_salvate', JSON.stringify(saved));
+
+            loadSavedRecipes();
+            alert('Rețeta a fost așezată la loc de cinste în caietul tău!');
+        };
+
+        window.loadSavedRecipes = function() {
+            const saved = JSON.parse(localStorage.getItem('miros_retele_salvate') || '[]');
+            const savedList = document.getElementById('savedList');
+
+            if(saved.length > 0) {
+                savedList.innerHTML = '';
+                saved.forEach((recipeHtml, index) => {
+                    const item = document.createElement('div');
+                    item.className = 'saved-recipe-item';
+                    item.innerHTML = `<strong>File # ${index + 1}</strong>` + recipeHtml;
+                    savedList.appendChild(item);
+                });
+            }
+        };
+
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js').catch(err => console.log(err));
+            });
+        }
+    </script>
+</body>
+</html>

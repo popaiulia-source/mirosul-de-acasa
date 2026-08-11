@@ -1,0 +1,9 @@
+{
+  "name": "Mirosul de Acasa",
+  "short_name": "MirosAcasa",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#fbf7f0",
+  "theme_color": "#6e2c22",
+  "icons": []
+}
